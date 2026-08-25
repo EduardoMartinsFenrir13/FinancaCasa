@@ -1,0 +1,1253 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Financy-Home</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- ============ CONFIGURAÇÃO — EDITE AQUI ============ -->
+<script>
+    // Cole aqui a URL do seu deploy do Apps Script (termina em /exec)
+    var APP_URL = 'https://script.google.com/macros/s/AKfycby52r4sr2nQHxvaHdXMi5PPgsUYTY2DtRfHrZ-a_XT6MI3bsxYHTKF4GR_3QDIkzGoX/exec';
+    // Cole aqui o token gerado pela função configurarToken() no Code.gs
+    var API_TOKEN = '98e3d42a-81b3-4572-af6a-fe8007644f43';
+</script>
+<!-- ==================================================== -->
+<style>
+  :root{
+    --paper:#FAF6EC; --paper-alt:#F3EDDD; --ink:#1F2A24; --ink-soft:#5C6459;
+    --primary:#1B4B3A; --primary-light:#DEE9DF; --gold:#C8963E; --gold-light:#F3E4C4;
+    --alert:#B5482A; --alert-light:#F4DFD5; --success:#2F7A52; --success-light:#DCEDE1;
+    --line:#D9CFB9;
+  }
+  *{ -webkit-font-smoothing:antialiased; }
+  body{ background:var(--paper); color:var(--ink); font-family:'Inter',sans-serif; }
+  .font-display{ font-family:'Fraunces',serif; font-optical-sizing:auto; }
+  .font-mono{ font-family:'IBM Plex Mono',monospace; font-variant-numeric: tabular-nums; }
+  .paper-card{ background:#fff; border:1px solid var(--line); box-shadow:0 1px 0 var(--line), 0 8px 24px -18px rgba(31,42,36,0.35); }
+  .tab-btn{ position:relative; font-family:'Fraunces',serif; transition:color .15s ease; }
+  .tab-btn.active{ color:var(--primary); }
+  .tab-btn.active::after{ content:""; position:absolute; left:8%; right:8%; bottom:-1px; height:3px; background:var(--gold); border-radius:3px 3px 0 0; }
+  .tab-btn:not(.active){ color:var(--ink-soft); }
+  .tab-sep{ width:1px; align-self:stretch; margin:6px 4px; background:var(--line); }
+  ::selection{ background:var(--gold-light); }
+  .chip{ font-family:'IBM Plex Mono',monospace; letter-spacing:.02em; }
+  .badge{ font-size:10px; padding:1px 7px; border-radius:9999px; background:var(--paper-alt); color:var(--ink-soft); white-space:nowrap; }
+  .status-pago{ background:var(--success-light); color:var(--success); }
+  .status-pendente{ background:var(--gold-light); color:#8A6412; }
+  .status-atrasado{ background:var(--alert-light); color:var(--alert); }
+  .row-enter{ animation: rowIn .35s ease; }
+  @keyframes rowIn{ from{ opacity:0; transform:translateY(-4px);} to{ opacity:1; transform:translateY(0);} }
+  input:focus, select:focus, textarea:focus{ outline:none; box-shadow:0 0 0 3px var(--gold-light); border-color:var(--gold); }
+  .btn-primary{ background:var(--primary); }
+  .btn-primary:hover{ background:#153b2d; }
+  .scrollbar-thin::-webkit-scrollbar{ height:6px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb{ background:var(--line); border-radius:3px; }
+  .heatmap-cell{ border-radius:4px; }
+  @media (prefers-reduced-motion: reduce){ .row-enter{ animation:none; } }
+  @media print{
+    header, #tabs-nav, #alertas-banner, .no-print{ display:none !important; }
+    body{ background:#fff; }
+    .paper-card{ box-shadow:none; border-color:#ccc; }
+    main{ max-width:100% !important; }
+  }
+</style>
+</head>
+<body class="pb-16">
+
+  <header class="sticky top-0 z-30" style="background:var(--primary);">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
+      <h1 class="text-white font-display text-xl sm:text-2xl font-medium flex items-center gap-2">
+        <i class="fa-solid fa-feather-pointed text-[var(--gold)]"></i> Financy-Home
+      </h1>
+      <div class="flex items-center gap-1.5">
+        <span id="save-indicator" class="hidden sm:inline text-xs text-white/70 font-mono mr-1"></span>
+        <button onclick="abrirModalMembros()" title="Perfis da família" class="text-white/90 hover:text-white bg-white/10 hover:bg-white/20 text-xs px-3 py-2 rounded-lg transition flex items-center gap-1.5">
+          <i class="fa-solid fa-users"></i><span class="hidden sm:inline">Perfis</span>
+        </button>
+        <button onclick="window.print()" title="Exportar PDF" class="text-white/90 hover:text-white bg-white/10 hover:bg-white/20 text-xs px-3 py-2 rounded-lg transition flex items-center gap-1.5">
+          <i class="fa-solid fa-file-pdf"></i><span class="hidden sm:inline">PDF</span>
+        </button>
+        <button onclick="exportarCSV()" title="Exportar CSV" class="text-white/90 hover:text-white bg-white/10 hover:bg-white/20 text-xs px-3 py-2 rounded-lg transition flex items-center gap-1.5">
+          <i class="fa-solid fa-file-arrow-down"></i><span class="hidden sm:inline">CSV</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-4 sm:px-6 mt-6 space-y-6">
+
+    <nav class="flex items-end gap-1 overflow-x-auto scrollbar-thin pb-px" id="tabs-nav"></nav>
+
+    <div id="erro-conexao" class="hidden paper-card rounded-2xl p-4 text-sm" style="border-color:var(--alert); color:var(--alert);"></div>
+
+    <!-- Alertas de vencimento -->
+    <div id="alertas-banner" class="hidden paper-card rounded-2xl p-4" style="border-color:var(--gold);">
+      <h3 class="text-xs font-semibold uppercase tracking-wide text-[var(--ink-soft)] mb-2 flex items-center gap-2">
+        <i class="fa-solid fa-triangle-exclamation" style="color:var(--gold);"></i> Avisos
+      </h3>
+      <div id="alertas-lista" class="space-y-1"></div>
+    </div>
+
+    <div id="loading-state" class="paper-card rounded-2xl p-8 text-center text-sm text-[var(--ink-soft)]">
+      <i class="fa-solid fa-spinner fa-spin mr-2"></i>Abrindo o Financy-Home…
+    </div>
+
+    <div id="app-content" class="hidden space-y-6">
+
+      <!-- ===================== VISÃO: DASHBOARD ===================== -->
+      <div id="view-dashboard" class="space-y-6">
+
+        <section class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div class="paper-card rounded-2xl p-4">
+            <p class="text-[11px] tracking-wide text-[var(--ink-soft)] font-medium uppercase">Saldo acumulado</p>
+            <p id="dash-saldo-total" class="font-display text-lg sm:text-xl font-semibold mt-1">R$ 0,00</p>
+          </div>
+          <div class="paper-card rounded-2xl p-4">
+            <p class="text-[11px] tracking-wide text-[var(--ink-soft)] font-medium uppercase">Receitas (6 meses)</p>
+            <p id="dash-receitas-6m" class="font-display text-lg sm:text-xl font-semibold mt-1" style="color:var(--success);">R$ 0,00</p>
+          </div>
+          <div class="paper-card rounded-2xl p-4">
+            <p class="text-[11px] tracking-wide text-[var(--ink-soft)] font-medium uppercase">Despesas (6 meses)</p>
+            <p id="dash-despesas-6m" class="font-display text-lg sm:text-xl font-semibold mt-1">R$ 0,00</p>
+          </div>
+          <div class="paper-card rounded-2xl p-4">
+            <p class="text-[11px] tracking-wide text-[var(--alert)] font-medium uppercase">Pendências totais</p>
+            <p id="dash-pendente-total" class="font-display text-lg sm:text-xl font-semibold mt-1" style="color:var(--alert);">R$ 0,00</p>
+          </div>
+        </section>
+
+        <section class="grid sm:grid-cols-5 gap-4">
+          <div class="paper-card rounded-2xl p-4 sm:p-5 sm:col-span-3">
+            <h2 class="text-sm font-semibold text-[var(--ink-soft)] mb-3 flex items-center gap-2">
+              <i class="fa-solid fa-chart-column" style="color:var(--gold);"></i> Comparativo dos últimos 6 meses
+            </h2>
+            <div class="relative h-56"><canvas id="graficoMeses"></canvas></div>
+          </div>
+          <div class="paper-card rounded-2xl p-4 sm:p-5 sm:col-span-2">
+            <div class="flex items-center justify-between mb-3 gap-2">
+              <h2 class="text-sm font-semibold text-[var(--ink-soft)] flex items-center gap-2">
+                <i class="fa-solid fa-chart-pie" style="color:var(--gold);"></i> Por categoria
+              </h2>
+              <select id="dash-mes-categoria" onchange="renderizarGraficos()" class="text-xs border border-[var(--line)] rounded-lg px-2 py-1 bg-white no-print"></select>
+            </div>
+            <div class="relative h-56"><canvas id="graficoCategorias"></canvas></div>
+          </div>
+        </section>
+
+        <section class="grid sm:grid-cols-2 gap-4">
+          <div class="paper-card rounded-2xl p-4 sm:p-5">
+            <h2 class="text-sm font-semibold text-[var(--ink-soft)] mb-3 flex items-center gap-2">
+              <i class="fa-solid fa-crystal-ball" style="color:var(--gold);"></i> Projeção de saldo (próx. 3 meses)
+            </h2>
+            <div id="dash-projecao" class="space-y-2 text-sm"></div>
+            <p id="dash-projecao-nota" class="text-xs text-[var(--ink-soft)] mt-2"></p>
+          </div>
+          <div class="paper-card rounded-2xl p-4 sm:p-5">
+            <h2 class="text-sm font-semibold text-[var(--ink-soft)] mb-3 flex items-center gap-2">
+              <i class="fa-solid fa-arrow-right-arrow-left" style="color:var(--gold);"></i> Categorias vs. mês anterior
+            </h2>
+            <div id="dash-comparativo" class="space-y-1.5 text-sm"></div>
+          </div>
+        </section>
+
+        <section class="grid sm:grid-cols-2 gap-4">
+          <div class="paper-card rounded-2xl p-4 sm:p-5">
+            <h2 class="text-sm font-semibold text-[var(--ink-soft)] mb-3 flex items-center gap-2">
+              <i class="fa-solid fa-user-group" style="color:var(--gold);"></i> Gasto por pessoa — <span id="dash-pessoa-mes" class="font-mono text-xs"></span>
+            </h2>
+            <div id="dash-por-pessoa" class="space-y-2"></div>
+          </div>
+          <div class="paper-card rounded-2xl p-4 sm:p-5">
+            <h2 class="text-sm font-semibold text-[var(--ink-soft)] mb-3 flex items-center gap-2">
+              <i class="fa-solid fa-handshake" style="color:var(--gold);"></i> Acerto de contas — <span class="font-mono text-xs" id="dash-acerto-mes"></span>
+            </h2>
+            <div id="dash-acerto" class="space-y-1.5 text-sm"></div>
+          </div>
+        </section>
+
+        <section class="paper-card rounded-2xl p-4 sm:p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-semibold text-[var(--ink-soft)] flex items-center gap-2">
+              <i class="fa-solid fa-piggy-bank" style="color:var(--gold);"></i> Metas de poupança
+            </h2>
+            <button onclick="novaPoupanca()" class="no-print text-xs font-medium" style="color:var(--primary);"><i class="fa-solid fa-plus mr-1"></i>Nova meta</button>
+          </div>
+          <div id="dash-poupancas" class="space-y-3"></div>
+        </section>
+
+        <section class="paper-card rounded-2xl p-4 sm:p-5">
+          <h2 class="text-sm font-semibold text-[var(--ink-soft)] mb-3 flex items-center gap-2">
+            <i class="fa-solid fa-bullseye" style="color:var(--gold);"></i> Metas de gasto por mês
+          </h2>
+          <div id="dash-metas-lista" class="space-y-3"></div>
+        </section>
+
+      </div>
+
+      <!-- ===================== VISÃO: MÊS ===================== -->
+      <div id="view-mes" class="hidden space-y-6">
+
+        <section class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div class="paper-card rounded-2xl p-4">
+            <p class="text-[11px] tracking-wide text-[var(--ink-soft)] font-medium uppercase">Receitas</p>
+            <p id="total-receitas" class="font-display text-lg sm:text-xl font-semibold mt-1" style="color:var(--success);">R$ 0,00</p>
+          </div>
+          <div class="paper-card rounded-2xl p-4">
+            <p class="text-[11px] tracking-wide text-[var(--ink-soft)] font-medium uppercase">Gasto no mês</p>
+            <p id="total-mes" class="font-display text-lg sm:text-xl font-semibold mt-1">R$ 0,00</p>
+          </div>
+          <div class="paper-card rounded-2xl p-4">
+            <p class="text-[11px] tracking-wide text-[var(--alert)] font-medium uppercase">Pendente</p>
+            <p id="total-pendente" class="font-display text-lg sm:text-xl font-semibold mt-1" style="color:var(--alert);">R$ 0,00</p>
+          </div>
+          <div class="paper-card rounded-2xl p-4">
+            <p class="text-[11px] tracking-wide text-[var(--ink-soft)] font-medium uppercase">Saldo</p>
+            <p id="total-saldo" class="font-display text-lg sm:text-xl font-semibold mt-1">R$ 0,00</p>
+          </div>
+        </section>
+
+        <section class="paper-card rounded-2xl p-4 sm:p-5">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <h2 class="text-sm font-semibold text-[var(--ink-soft)] flex items-center gap-2">
+              <i class="fa-solid fa-bullseye" style="color:var(--gold);"></i> Meta geral do mês
+            </h2>
+            <button onclick="editarMeta()" class="no-print text-xs font-medium" style="color:var(--primary);">
+              <span id="meta-label">Definir meta</span> <i class="fa-solid fa-pen ml-1"></i>
+            </button>
+          </div>
+          <div class="w-full h-3 rounded-full overflow-hidden" style="background:var(--paper-alt);">
+            <div id="meta-barra" class="h-full rounded-full transition-all duration-500" style="width:0%; background:var(--primary);"></div>
+          </div>
+          <p id="meta-texto" class="text-xs text-[var(--ink-soft)] mt-2 font-mono">Sem meta definida para este mês.</p>
+        </section>
+
+        <section class="paper-card rounded-2xl p-4 sm:p-5">
+          <h2 class="text-sm font-semibold text-[var(--ink-soft)] mb-3 flex items-center gap-2">
+            <i class="fa-solid fa-sliders" style="color:var(--gold);"></i> Orçamento por categoria
+          </h2>
+          <div id="orcamento-categorias" class="space-y-2.5"></div>
+        </section>
+
+        <section class="paper-card rounded-2xl p-4 sm:p-5">
+          <h2 class="text-sm font-semibold text-[var(--ink-soft)] mb-3 flex items-center gap-2">
+            <i class="fa-solid fa-calendar-days" style="color:var(--gold);"></i> Mapa de gastos do mês
+          </h2>
+          <div id="heatmap-mes"></div>
+        </section>
+
+        <section class="paper-card rounded-2xl p-4 sm:p-5 no-print">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h2 class="text-sm font-semibold text-[var(--ink-soft)] flex items-center gap-2">
+              <i class="fa-solid fa-plus-circle" style="color:var(--gold);"></i> Novo lançamento — <span id="mes-form-label" class="font-mono"></span>
+            </h2>
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="gerarRecorrentesProximoMes()" title="Gerar recorrentes no próximo mês" class="text-xs font-medium" style="color:var(--primary);">
+                <i class="fa-solid fa-repeat mr-1"></i>Gerar recorrentes
+              </button>
+              <input type="file" id="input-csv" accept=".csv" class="hidden" onchange="importarCSV(event)">
+              <button type="button" onclick="document.getElementById('input-csv').click()" title="Importar extrato CSV" class="text-xs font-medium" style="color:var(--primary);">
+                <i class="fa-solid fa-file-import mr-1"></i>Importar CSV
+              </button>
+            </div>
+          </div>
+          <form id="form-gasto" onsubmit="adicionarGasto(event)" class="space-y-3">
+            <div class="flex gap-2">
+              <button type="button" onclick="setTipoLancamento('despesa')" id="btn-tipo-despesa" class="tipo-btn flex-1 text-sm font-medium py-2 rounded-lg border transition"></button>
+              <button type="button" onclick="setTipoLancamento('receita')" id="btn-tipo-receita" class="tipo-btn flex-1 text-sm font-medium py-2 rounded-lg border transition"></button>
+            </div>
+            <input type="text" id="descricao" placeholder="Ex: Cartão Nubank, Aluguel, Salário..." required class="w-full text-sm border border-[var(--line)] rounded-lg p-2.5 bg-white">
+            <div class="grid grid-cols-2 gap-2">
+              <input type="number" step="0.01" min="0.01" id="valor" placeholder="Valor total (R$)" required class="w-full text-sm border border-[var(--line)] rounded-lg p-2.5 bg-white font-mono">
+              <select id="categoria" class="w-full text-sm border border-[var(--line)] rounded-lg p-2.5 bg-white"></select>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <input type="date" id="data" required class="w-full text-sm border border-[var(--line)] rounded-lg p-2.5 bg-white font-mono">
+              <select id="conta" class="w-full text-sm border border-[var(--line)] rounded-lg p-2.5 bg-white"></select>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <select id="pessoa" onchange="renderizarDividirCom()" class="w-full text-sm border border-[var(--line)] rounded-lg p-2.5 bg-white"></select>
+              <input type="text" id="nota" placeholder="Nota / comprovante (opcional)" class="w-full text-sm border border-[var(--line)] rounded-lg p-2.5 bg-white">
+            </div>
+            <div id="bloco-parcelas" class="flex items-center gap-2">
+              <label class="flex items-center gap-1.5 text-xs text-[var(--ink-soft)]">
+                <input type="checkbox" id="parcelar" onchange="document.getElementById('qtd-parcelas').disabled = !this.checked">
+                Parcelar em
+              </label>
+              <input type="number" id="qtd-parcelas" min="2" max="48" value="2" disabled class="w-16 text-xs border border-[var(--line)] rounded-lg p-1.5 bg-white font-mono">
+              <span class="text-xs text-[var(--ink-soft)]">vezes</span>
+            </div>
+            <label class="flex items-center gap-2 text-xs text-[var(--ink-soft)]">
+              <input type="checkbox" id="recorrente" class="rounded border-[var(--line)]">
+              Repetir todo mês (conta fixa)
+            </label>
+            <div>
+              <p class="text-xs text-[var(--ink-soft)] mb-1.5">Dividir despesa com:</p>
+              <div id="dividir-com-container" class="flex flex-wrap gap-2"></div>
+            </div>
+            <button type="submit" class="w-full text-white text-sm font-medium py-2.5 rounded-lg btn-primary transition">Salvar lançamento</button>
+          </form>
+        </section>
+
+        <section class="paper-card rounded-2xl p-4 sm:p-5">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h2 class="text-sm font-semibold text-[var(--ink-soft)] flex items-center gap-2">
+              <i class="fa-solid fa-list-check" style="color:var(--gold);"></i> Lançamentos do mês
+            </h2>
+            <div class="flex flex-wrap items-center gap-2 no-print">
+              <input type="text" id="busca" oninput="atualizarTelaMes()" placeholder="Buscar..." class="text-xs border border-[var(--line)] rounded-lg px-2.5 py-1.5 bg-white w-28">
+              <select id="filtro-status" onchange="atualizarTelaMes()" class="text-xs border border-[var(--line)] rounded-lg px-2 py-1.5 bg-white">
+                <option value="todos">Status: todos</option>
+                <option value="pago">Pagos</option>
+                <option value="pendente">Pendentes</option>
+                <option value="atrasado">Atrasados</option>
+              </select>
+              <select id="filtro-conta" onchange="atualizarTelaMes()" class="text-xs border border-[var(--line)] rounded-lg px-2 py-1.5 bg-white">
+                <option value="todas">Conta: todas</option>
+              </select>
+              <select id="filtro-pessoa" onchange="atualizarTelaMes()" class="text-xs border border-[var(--line)] rounded-lg px-2 py-1.5 bg-white">
+                <option value="todas">Pessoa: todas</option>
+              </select>
+            </div>
+          </div>
+          <div class="overflow-x-auto scrollbar-thin">
+            <table class="w-full text-left border-collapse min-w-[620px]">
+              <thead>
+                <tr class="border-b border-[var(--line)] text-[11px] text-[var(--ink-soft)] uppercase tracking-wide">
+                  <th class="py-2 px-1">Item</th>
+                  <th class="py-2 px-1">Categoria</th>
+                  <th class="py-2 px-1 text-right">Valor</th>
+                  <th class="py-2 px-1 text-center">Status</th>
+                  <th class="py-2 px-1 text-center no-print">Ação</th>
+                </tr>
+              </thead>
+              <tbody id="tabela-gastos" class="text-sm divide-y divide-[var(--paper-alt)]"></tbody>
+            </table>
+          </div>
+          <p id="lista-vazia" class="hidden text-center text-sm text-[var(--ink-soft)] py-8">
+            <i class="fa-regular fa-folder-open text-lg block mb-2"></i>Nenhum lançamento aqui ainda. Página em branco à espera da sua caneta.
+          </p>
+        </section>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal confirmação -->
+  <div id="modal-confirm" class="hidden fixed inset-0 bg-black/40 z-40 flex items-center justify-center px-4">
+    <div class="bg-white rounded-2xl p-5 max-w-sm w-full paper-card">
+      <p id="modal-confirm-texto" class="text-sm text-[var(--ink)] mb-4">Tem certeza?</p>
+      <div class="flex gap-2 justify-end">
+        <button onclick="fecharModal()" class="text-xs px-3 py-2 rounded-lg border border-[var(--line)]">Cancelar</button>
+        <button id="modal-confirm-ok" class="text-xs px-3 py-2 rounded-lg text-white" style="background:var(--alert);">Excluir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal edição -->
+  <div id="modal-edit" class="hidden fixed inset-0 bg-black/40 z-40 flex items-center justify-center px-4">
+    <div class="bg-white rounded-2xl p-5 max-w-sm w-full paper-card">
+      <h3 class="font-display text-lg mb-3">Editar lançamento</h3>
+      <div class="space-y-3">
+        <input type="text" id="edit-descricao" class="w-full text-sm border border-[var(--line)] rounded-lg p-2.5">
+        <div class="grid grid-cols-2 gap-2">
+          <input type="number" step="0.01" id="edit-valor" class="w-full text-sm border border-[var(--line)] rounded-lg p-2.5 font-mono">
+          <select id="edit-categoria" class="w-full text-sm border border-[var(--line)] rounded-lg p-2.5"></select>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <input type="date" id="edit-data" class="w-full text-sm border border-[var(--line)] rounded-lg p-2.5 font-mono">
+          <select id="edit-conta" class="w-full text-sm border border-[var(--line)] rounded-lg p-2.5"></select>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <select id="edit-pessoa" class="w-full text-sm border border-[var(--line)] rounded-lg p-2.5"></select>
+          <input type="text" id="edit-nota" placeholder="Nota (opcional)" class="w-full text-sm border border-[var(--line)] rounded-lg p-2.5">
+        </div>
+      </div>
+      <div class="flex gap-2 justify-end mt-4">
+        <button onclick="fecharModalEdit()" class="text-xs px-3 py-2 rounded-lg border border-[var(--line)]">Cancelar</button>
+        <button onclick="salvarEdicao()" class="text-xs px-3 py-2 rounded-lg text-white btn-primary">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal membros/perfis -->
+  <div id="modal-membros" class="hidden fixed inset-0 bg-black/40 z-40 flex items-center justify-center px-4">
+    <div class="bg-white rounded-2xl p-5 max-w-sm w-full paper-card">
+      <h3 class="font-display text-lg mb-3">Perfis da família</h3>
+      <div id="lista-membros" class="space-y-1.5 mb-3 max-h-56 overflow-y-auto scrollbar-thin"></div>
+      <div class="flex gap-2">
+        <input type="text" id="novo-membro" placeholder="Nome do perfil" class="flex-1 text-sm border border-[var(--line)] rounded-lg p-2">
+        <button onclick="adicionarMembro()" class="text-xs px-3 py-2 rounded-lg text-white btn-primary">Adicionar</button>
+      </div>
+      <div class="flex justify-end mt-4">
+        <button onclick="fecharModalMembros()" class="text-xs px-3 py-2 rounded-lg border border-[var(--line)]">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+const CATEGORIAS_DESPESA = ['Moradia','Alimentação','Transporte','Dívidas/Cartões','Saúde','Educação','Lazer','Outros'];
+const CATEGORIAS_RECEITA = ['Salário','Extra','Investimentos','Outros'];
+const CONTAS = ['Conta corrente','Cartão de crédito','Dinheiro','Poupança'];
+const STORAGE_KEY = 'financy-home:v2';
+const CORES_CATEGORIA = ['#1B4B3A','#C8963E','#B5482A','#5C6459','#2F7A52','#8C6D3F','#4A6670','#A38F65'];
+
+let estado = { lancamentos: [], metas: {}, metasCategoria: {}, membros: ['Você'], poupancas: [] };
+let abaAtual = 'dashboard';
+let mesAtual = mesRef(new Date());
+let tipoAtual = 'despesa';
+let editandoId = null;
+let idParaExcluir = null;
+let graficoMeses = null, graficoCategorias = null;
+
+// ---------- Utilidades de data ----------
+function mesRef(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
+function labelMes(ref){
+  const [y,m] = ref.split('-').map(Number);
+  return new Date(y, m-1, 1).toLocaleDateString('pt-BR', { month:'short', year:'2-digit' }).replace('.','');
+}
+function nomeMesCompleto(ref){
+  const [y,m] = ref.split('-').map(Number);
+  const s = new Date(y, m-1, 1).toLocaleDateString('pt-BR', { month:'long', year:'numeric' });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+function moeda(v){ return Number(v||0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' }); }
+function ultimosMeses(n){
+  const arr = []; const hoje = new Date();
+  for(let i=n-1;i>=0;i--){ arr.push(mesRef(new Date(hoje.getFullYear(), hoje.getMonth()-i, 1))); }
+  return arr;
+}
+function hojeStr(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function diasNoMes(y, m0){ return new Date(y, m0+1, 0).getDate(); }
+function addMeses(dataStr, n){
+  const [y,m,d] = dataStr.split('-').map(Number);
+  const alvo = new Date(y, (m-1)+n, 1);
+  const diaFinal = Math.min(d, diasNoMes(alvo.getFullYear(), alvo.getMonth()));
+  return `${alvo.getFullYear()}-${String(alvo.getMonth()+1).padStart(2,'0')}-${String(diaFinal).padStart(2,'0')}`;
+}
+function mesAnteriorRef(ref){
+  const [y,m] = ref.split('-').map(Number);
+  const d = new Date(y, m-2, 1);
+  return mesRef(d);
+}
+
+// ---------- Comunicação com a API (Google Sheets via Apps Script) ----------
+function chamarApi(action, params, isPost){
+  params = Object.assign({}, params || {});
+  params.action = action;
+  params.token = API_TOKEN;
+
+  if(isPost){
+    // POST em text/plain evita o preflight de CORS que o Apps Script não trata
+    return fetch(APP_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(params)
+    }).then(r => r.json());
+  }
+
+  const query = Object.keys(params).map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k])).join('&');
+  return fetch(APP_URL + '?' + query).then(r => r.json());
+}
+
+function mostrarErroConexao(msg){
+  const el = document.getElementById('erro-conexao');
+  el.textContent = 'Não consegui falar com a planilha: ' + msg;
+  el.classList.remove('hidden');
+}
+function limparErroConexao(){
+  document.getElementById('erro-conexao').classList.add('hidden');
+}
+
+function estadoVazio(){
+  return { lancamentos: [], metas: {}, metasCategoria: {}, membros: ['Você'], poupancas: [] };
+}
+
+// ---------- Persistência ----------
+async function carregarEstado(){
+  try{
+    const resp = await chamarApi('carregarEstado');
+    if(resp.ok && resp.estado){
+      limparErroConexao();
+      estado = resp.estado;
+      estado.metas ||= {};
+      estado.metasCategoria ||= {};
+      estado.membros ||= ['Você'];
+      estado.poupancas ||= [];
+      estado.lancamentos ||= [];
+    } else {
+      mostrarErroConexao(resp.erro || 'resposta inesperada da API.');
+      estado = estadoVazio();
+    }
+  } catch(e){
+    mostrarErroConexao('verifique se a URL/token no topo do arquivo estão corretos.');
+    estado = estadoVazio();
+  }
+}
+let salvarTimeout = null;
+async function salvarEstado(mostrarIndicador = true){
+  if(mostrarIndicador){
+    const ind = document.getElementById('save-indicator');
+    ind.textContent = 'Salvando…'; ind.classList.remove('hidden');
+  }
+  try{
+    const resp = await chamarApi('salvarEstado', { estado: estado }, true);
+    if(!resp.ok) throw new Error(resp.erro || 'falha ao salvar');
+    limparErroConexao();
+    if(mostrarIndicador){
+      const ind = document.getElementById('save-indicator');
+      ind.textContent = 'Salvo';
+      clearTimeout(salvarTimeout);
+      salvarTimeout = setTimeout(()=> ind.classList.add('hidden'), 1500);
+    }
+  } catch(e){
+    const ind = document.getElementById('save-indicator');
+    ind.textContent = 'Erro ao salvar'; ind.classList.remove('hidden');
+    mostrarErroConexao(e.message);
+  }
+}
+
+// ---------- Abas ----------
+function renderizarAbas(){
+  const nav = document.getElementById('tabs-nav');
+  const meses = ultimosMeses(6);
+  let html = `
+    <button class="tab-btn ${abaAtual==='dashboard'?'active':''} text-sm px-4 py-2 whitespace-nowrap flex items-center gap-1.5" onclick="mudarAba('dashboard')">
+      <i class="fa-solid fa-gauge-high text-xs"></i> Dashboard
+    </button>
+    <span class="tab-sep"></span>`;
+  html += meses.map(ref => `
+    <button class="tab-btn ${abaAtual===ref?'active':''} text-sm px-4 py-2 whitespace-nowrap" onclick="mudarAba('${ref}')">${labelMes(ref)}</button>
+  `).join('');
+  nav.innerHTML = html;
+}
+function mudarAba(aba){
+  abaAtual = aba;
+  if(aba !== 'dashboard') mesAtual = aba;
+  renderizarAbas();
+  const dash = document.getElementById('view-dashboard');
+  const mes = document.getElementById('view-mes');
+  if(aba === 'dashboard'){
+    dash.classList.remove('hidden'); mes.classList.add('hidden');
+    atualizarDashboard();
+  } else {
+    dash.classList.add('hidden'); mes.classList.remove('hidden');
+    atualizarDataPadrao();
+    atualizarTelaMes();
+  }
+  atualizarAlertas();
+}
+
+// ---------- Formulário ----------
+function popularCategorias(selectId, tipo){
+  const sel = document.getElementById(selectId);
+  const lista = tipo === 'receita' ? CATEGORIAS_RECEITA : CATEGORIAS_DESPESA;
+  sel.innerHTML = lista.map(c => `<option value="${c}">${c}</option>`).join('');
+}
+function popularContas(selectId){
+  document.getElementById(selectId).innerHTML = CONTAS.map(c => `<option value="${c}">${c}</option>`).join('');
+}
+function popularPessoas(selectId){
+  const sel = document.getElementById(selectId);
+  const atual = sel.value;
+  sel.innerHTML = estado.membros.map(m => `<option value="${m}">${m}</option>`).join('');
+  sel.value = estado.membros.includes(atual) ? atual : estado.membros[0];
+}
+function renderizarDividirCom(){
+  const pessoa = document.getElementById('pessoa').value;
+  const outros = estado.membros.filter(m => m !== pessoa);
+  const cont = document.getElementById('dividir-com-container');
+  cont.innerHTML = outros.length
+    ? outros.map(m => `<label class="flex items-center gap-1.5 text-xs bg-[var(--paper-alt)] px-2 py-1 rounded-lg"><input type="checkbox" class="dividir-check" value="${m}"> ${m}</label>`).join('')
+    : `<p class="text-xs text-[var(--ink-soft)]">Adicione mais perfis em "Perfis" para dividir despesas.</p>`;
+}
+function atualizarDataPadrao(){
+  const campo = document.getElementById('data');
+  campo.value = (mesAtual === mesRef(new Date())) ? hojeStr() : `${mesAtual}-01`;
+}
+function setTipoLancamento(tipo){
+  tipoAtual = tipo;
+  popularCategorias('categoria', tipo);
+  document.getElementById('bloco-parcelas').style.display = tipo === 'despesa' ? 'flex' : 'none';
+  const d = document.getElementById('btn-tipo-despesa');
+  const r = document.getElementById('btn-tipo-receita');
+  d.textContent = 'Despesa'; r.textContent = 'Receita';
+  if(tipo==='despesa'){
+    d.style.background='var(--primary)'; d.style.color='#fff'; d.style.borderColor='var(--primary)';
+    r.style.background='#fff'; r.style.color='var(--ink-soft)'; r.style.borderColor='var(--line)';
+  } else {
+    r.style.background='var(--success)'; r.style.color='#fff'; r.style.borderColor='var(--success)';
+    d.style.background='#fff'; d.style.color='var(--ink-soft)'; d.style.borderColor='var(--line)';
+  }
+}
+
+function adicionarGasto(event){
+  event.preventDefault();
+  const descricao = document.getElementById('descricao').value.trim();
+  const valorTotal = parseFloat(document.getElementById('valor').value);
+  const categoria = document.getElementById('categoria').value;
+  const data = document.getElementById('data').value || hojeStr();
+  const conta = document.getElementById('conta').value;
+  const pessoa = document.getElementById('pessoa').value;
+  const nota = document.getElementById('nota').value.trim();
+  const recorrente = document.getElementById('recorrente').checked;
+  const dividirCom = Array.from(document.querySelectorAll('.dividir-check:checked')).map(cb => cb.value);
+  const parcelar = tipoAtual === 'despesa' && document.getElementById('parcelar').checked;
+  const qtdParcelas = Math.max(2, Math.min(48, parseInt(document.getElementById('qtd-parcelas').value, 10) || 2));
+  if(!descricao || !(valorTotal > 0)) return;
+
+  if(parcelar && qtdParcelas > 1){
+    const grupo = Date.now();
+    const valorParcela = Math.round((valorTotal / qtdParcelas) * 100) / 100;
+    let somaParcial = 0;
+    for(let i = 0; i < qtdParcelas; i++){
+      const valorItem = (i === qtdParcelas - 1) ? Math.round((valorTotal - somaParcial) * 100) / 100 : valorParcela;
+      somaParcial += valorItem;
+      const dataItem = addMeses(data, i);
+      estado.lancamentos.push({
+        id: Date.now() + i, tipo:'despesa', descricao:`${descricao} (${i+1}/${qtdParcelas})`, categoria,
+        valor: valorItem, pago: i === 0 ? false : false, data: dataItem, mes: dataItem.slice(0,7),
+        recorrente:false, conta, pessoa, nota, parcela:{ grupo, atual:i+1, total:qtdParcelas }, dividirCom
+      });
+    }
+  } else {
+    estado.lancamentos.push({
+      id: Date.now(), tipo: tipoAtual, descricao, categoria, valor: valorTotal,
+      pago: tipoAtual === 'receita', data, mes: data.slice(0,7), recorrente,
+      conta, pessoa, nota, parcela: null, dividirCom: tipoAtual === 'despesa' ? dividirCom : []
+    });
+  }
+
+  salvarEstado();
+  document.getElementById('form-gasto').reset();
+  setTipoLancamento('despesa');
+  atualizarDataPadrao();
+  popularPessoas('pessoa');
+  renderizarDividirCom();
+  atualizarTelaMes();
+  atualizarAlertas();
+}
+
+function alternarStatus(id){
+  const item = estado.lancamentos.find(g => g.id === id);
+  if(item) item.pago = !item.pago;
+  salvarEstado(); atualizarTelaMes(); atualizarAlertas();
+}
+function pedirExclusao(id){
+  idParaExcluir = id;
+  document.getElementById('modal-confirm-texto').textContent = 'Excluir este lançamento? Essa ação não pode ser desfeita.';
+  document.getElementById('modal-confirm').classList.remove('hidden');
+  document.getElementById('modal-confirm-ok').onclick = confirmarExclusao;
+}
+function confirmarExclusao(){
+  estado.lancamentos = estado.lancamentos.filter(g => g.id !== idParaExcluir);
+  salvarEstado(); fecharModal(); atualizarTelaMes(); atualizarAlertas();
+}
+function fecharModal(){ document.getElementById('modal-confirm').classList.add('hidden'); idParaExcluir = null; }
+
+function abrirEdicao(id){
+  const item = estado.lancamentos.find(g => g.id === id);
+  if(!item) return;
+  editandoId = id;
+  popularCategorias('edit-categoria', item.tipo);
+  popularContas('edit-conta');
+  popularPessoas('edit-pessoa');
+  document.getElementById('edit-descricao').value = item.descricao;
+  document.getElementById('edit-valor').value = item.valor;
+  document.getElementById('edit-categoria').value = item.categoria;
+  document.getElementById('edit-data').value = item.data;
+  document.getElementById('edit-conta').value = item.conta || CONTAS[0];
+  document.getElementById('edit-pessoa').value = item.pessoa || estado.membros[0];
+  document.getElementById('edit-nota').value = item.nota || '';
+  document.getElementById('modal-edit').classList.remove('hidden');
+}
+function fecharModalEdit(){ document.getElementById('modal-edit').classList.add('hidden'); editandoId = null; }
+function salvarEdicao(){
+  const item = estado.lancamentos.find(g => g.id === editandoId);
+  if(!item) return;
+  const descricao = document.getElementById('edit-descricao').value.trim();
+  const valor = parseFloat(document.getElementById('edit-valor').value);
+  const data = document.getElementById('edit-data').value;
+  if(!descricao || !(valor > 0) || !data) return;
+  item.descricao = descricao; item.valor = valor;
+  item.categoria = document.getElementById('edit-categoria').value;
+  item.data = data; item.mes = data.slice(0,7);
+  item.conta = document.getElementById('edit-conta').value;
+  item.pessoa = document.getElementById('edit-pessoa').value;
+  item.nota = document.getElementById('edit-nota').value.trim();
+  salvarEstado(); fecharModalEdit(); atualizarTelaMes(); atualizarAlertas();
+}
+
+// ---------- Meta geral e por categoria ----------
+function editarMeta(){
+  const atual = estado.metas[mesAtual] || '';
+  const valor = prompt(`Meta geral de gastos para ${nomeMesCompleto(mesAtual)} (R$):`, atual);
+  if(valor === null) return;
+  const num = parseFloat(valor.replace(',', '.'));
+  if(num > 0) estado.metas[mesAtual] = num; else delete estado.metas[mesAtual];
+  salvarEstado(); atualizarTelaMes();
+}
+function editarMetaCategoria(categoria){
+  if(!estado.metasCategoria[mesAtual]) estado.metasCategoria[mesAtual] = {};
+  const atual = estado.metasCategoria[mesAtual][categoria] || '';
+  const valor = prompt(`Orçamento de "${categoria}" para ${nomeMesCompleto(mesAtual)} (R$):`, atual);
+  if(valor === null) return;
+  const num = parseFloat(valor.replace(',', '.'));
+  if(num > 0) estado.metasCategoria[mesAtual][categoria] = num; else delete estado.metasCategoria[mesAtual][categoria];
+  salvarEstado(); atualizarTelaMes();
+}
+
+// ---------- Poupança ----------
+function novaPoupanca(){
+  const nome = prompt('Nome da meta de poupança (ex: Viagem, Reserva de emergência):');
+  if(!nome) return;
+  const alvoStr = prompt(`Valor alvo para "${nome}" (R$):`);
+  const alvo = parseFloat((alvoStr||'').replace(',', '.'));
+  if(!(alvo > 0)){ alert('Valor inválido.'); return; }
+  estado.poupancas.push({ id: Date.now(), nome, alvo, atual: 0 });
+  salvarEstado(); atualizarDashboard();
+}
+function contribuirPoupanca(id){
+  const p = estado.poupancas.find(x => x.id === id);
+  if(!p) return;
+  const valStr = prompt(`Contribuir para "${p.nome}" (R$):`);
+  const val = parseFloat((valStr||'').replace(',', '.'));
+  if(!(val > 0)) return;
+  p.atual += val;
+  salvarEstado(); atualizarDashboard();
+}
+function excluirPoupanca(id){
+  if(!confirm('Excluir esta meta de poupança?')) return;
+  estado.poupancas = estado.poupancas.filter(x => x.id !== id);
+  salvarEstado(); atualizarDashboard();
+}
+
+// ---------- Membros / perfis ----------
+function abrirModalMembros(){ renderizarMembrosModal(); document.getElementById('modal-membros').classList.remove('hidden'); }
+function fecharModalMembros(){ document.getElementById('modal-membros').classList.add('hidden'); }
+function renderizarMembrosModal(){
+  document.getElementById('lista-membros').innerHTML = estado.membros.map(m => `
+    <div class="flex items-center justify-between text-sm bg-[var(--paper-alt)] rounded-lg px-3 py-2">
+      <span>${m}</span>
+      <button onclick="removerMembro('${m.replace(/'/g,"\\'")}')" class="text-[var(--ink-soft)] hover:text-[var(--alert)]"><i class="fa-solid fa-xmark"></i></button>
+    </div>`).join('');
+}
+function adicionarMembro(){
+  const input = document.getElementById('novo-membro');
+  const nome = input.value.trim();
+  if(!nome) return;
+  if(estado.membros.includes(nome)){ alert('Esse perfil já existe.'); return; }
+  estado.membros.push(nome);
+  input.value = '';
+  salvarEstado();
+  renderizarMembrosModal();
+  popularPessoas('pessoa'); renderizarDividirCom();
+}
+function removerMembro(nome){
+  if(estado.membros.length <= 1){ alert('É necessário manter ao menos um perfil.'); return; }
+  if(!confirm(`Remover o perfil "${nome}"?`)) return;
+  estado.membros = estado.membros.filter(m => m !== nome);
+  salvarEstado();
+  renderizarMembrosModal();
+  popularPessoas('pessoa'); renderizarDividirCom();
+  if(abaAtual === 'dashboard') atualizarDashboard();
+}
+
+// ---------- Recorrentes ----------
+function gerarRecorrentesProximoMes(){
+  const [y,m] = mesAtual.split('-').map(Number);
+  const proximo = new Date(y, m, 1);
+  const refProximo = mesRef(proximo);
+  const recorrentes = lancamentosDoMes(mesAtual).filter(g => g.recorrente);
+  if(recorrentes.length === 0){ alert('Não há lançamentos recorrentes neste mês.'); return; }
+  const jaExistentes = lancamentosDoMes(refProximo).map(g => g.descricao);
+  let criados = 0;
+  recorrentes.forEach(g => {
+    if(jaExistentes.includes(g.descricao)) return;
+    const diaOriginal = parseInt(g.data.slice(8,10), 10);
+    const diaClamped = Math.min(diaOriginal, diasNoMes(proximo.getFullYear(), proximo.getMonth()));
+    const novaData = `${refProximo}-${String(diaClamped).padStart(2,'0')}`;
+    estado.lancamentos.push({ ...g, id: Date.now() + Math.floor(Math.random()*1000), data: novaData, mes: refProximo, pago: g.tipo === 'receita', parcela: null });
+    criados++;
+  });
+  salvarEstado();
+  alert(criados > 0 ? `${criados} lançamento(s) recorrente(s) gerado(s) para ${nomeMesCompleto(refProximo)}.` : 'Esses lançamentos já existem no próximo mês.');
+  atualizarTelaMes();
+}
+
+// ---------- CSV: importar ----------
+function importarCSV(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => processarCSV(e.target.result);
+  reader.readAsText(file, 'utf-8');
+  event.target.value = '';
+}
+function parseCampos(linha, delim){
+  return linha.split(delim).map(c => c.trim().replace(/^"+|"+$/g, ''));
+}
+function parseDataFlexivel(str){
+  if(!str) return null;
+  str = str.trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  const partesBr = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if(partesBr){
+    let [,d,m,y] = partesBr;
+    if(y.length === 2) y = '20' + y;
+    return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+  }
+  return null;
+}
+function processarCSV(texto){
+  const linhas = texto.split(/\r?\n/).filter(l => l.trim());
+  if(linhas.length < 2){ alert('Arquivo vazio ou inválido.'); return; }
+  const delim = linhas[0].includes(';') ? ';' : ',';
+  const header = parseCampos(linhas[0], delim).map(h => h.toLowerCase());
+  let importados = 0;
+
+  const formatoProprio = header.includes('tipo') && header.includes('valor');
+  for(let i = 1; i < linhas.length; i++){
+    const campos = parseCampos(linhas[i], delim);
+    if(campos.length < 2) continue;
+
+    if(formatoProprio){
+      const idxTipo = header.indexOf('tipo');
+      const idxDesc = header.indexOf('descrição') >= 0 ? header.indexOf('descrição') : header.indexOf('descricao');
+      const idxCat = header.indexOf('categoria');
+      const idxVal = header.indexOf('valor');
+      const idxStatus = header.indexOf('status');
+      const tipo = (campos[idxTipo] || '').toLowerCase().includes('receita') ? 'receita' : 'despesa';
+      const descricao = campos[idxDesc] || 'Importado';
+      const categoria = campos[idxCat] || 'Outros';
+      const valor = Math.abs(parseFloat((campos[idxVal] || '0').replace(',', '.')));
+      const status = (campos[idxStatus] || '').toLowerCase();
+      if(!(valor > 0)) continue;
+      const data = `${mesAtual}-01`;
+      estado.lancamentos.push({
+        id: Date.now() + i, tipo, descricao, categoria, valor,
+        pago: status.includes('pago') || status.includes('recebido'), data, mes: mesAtual,
+        recorrente:false, conta: CONTAS[0], pessoa: estado.membros[0], nota:'Importado via CSV', parcela:null, dividirCom:[]
+      });
+      importados++;
+    } else {
+      // formato genérico: [data?, descrição, valor]
+      let data = parseDataFlexivel(campos[0]);
+      let descricao, valorStr;
+      if(data){ descricao = campos[1] || 'Importado'; valorStr = campos[2] || campos[1]; }
+      else { descricao = campos[0] || 'Importado'; valorStr = campos[1]; data = `${mesAtual}-01`; }
+      const valorNum = parseFloat((valorStr || '0').replace(',', '.'));
+      if(!valorNum) continue;
+      estado.lancamentos.push({
+        id: Date.now() + i, tipo: valorNum < 0 ? 'despesa' : 'receita', descricao, categoria:'Outros',
+        valor: Math.abs(valorNum), pago: valorNum >= 0, data, mes: data.slice(0,7),
+        recorrente:false, conta: CONTAS[0], pessoa: estado.membros[0], nota:'Importado via CSV', parcela:null, dividirCom:[]
+      });
+      importados++;
+    }
+  }
+  salvarEstado();
+  alert(importados > 0 ? `${importados} lançamento(s) importado(s).` : 'Nenhum lançamento reconhecido nesse arquivo.');
+  atualizarTelaMes(); atualizarAlertas();
+}
+
+// ---------- Dados auxiliares ----------
+function lancamentosDoMes(ref){ return estado.lancamentos.filter(g => g.mes === ref); }
+function totaisDoMes(ref){
+  const doMes = lancamentosDoMes(ref);
+  const despesas = doMes.filter(g => g.tipo === 'despesa');
+  const receitas = doMes.filter(g => g.tipo === 'receita');
+  return {
+    despesas: despesas.reduce((s,g)=>s+Number(g.valor),0),
+    receitas: receitas.reduce((s,g)=>s+Number(g.valor),0),
+    pendente: despesas.filter(g=>!g.pago).reduce((s,g)=>s+Number(g.valor),0)
+  };
+}
+function statusItem(g){
+  if(g.tipo === 'receita') return g.pago ? 'pago' : 'pendente';
+  if(g.pago) return 'pago';
+  return g.data < hojeStr() ? 'atrasado' : 'pendente';
+}
+
+// ---------- Alertas ----------
+function atualizarAlertas(){
+  const hoje = hojeStr();
+  const emCincoDias = new Date(); emCincoDias.setDate(emCincoDias.getDate()+5);
+  const limite = `${emCincoDias.getFullYear()}-${String(emCincoDias.getMonth()+1).padStart(2,'0')}-${String(emCincoDias.getDate()).padStart(2,'0')}`;
+  const pendencias = estado.lancamentos
+    .filter(g => g.tipo === 'despesa' && !g.pago && g.data <= limite)
+    .sort((a,b) => a.data.localeCompare(b.data));
+
+  const banner = document.getElementById('alertas-banner');
+  const lista = document.getElementById('alertas-lista');
+  if(pendencias.length === 0){ banner.classList.add('hidden'); return; }
+  banner.classList.remove('hidden');
+  const visiveis = pendencias.slice(0, 6);
+  lista.innerHTML = visiveis.map(g => {
+    const atrasado = g.data < hoje;
+    return `<div class="flex items-center justify-between text-xs">
+      <span>${atrasado ? '<i class="fa-solid fa-circle-exclamation" style="color:var(--alert)"></i>' : '<i class="fa-regular fa-clock" style="color:var(--gold)"></i>'}
+        ${g.descricao} <span class="text-[var(--ink-soft)]">(${new Date(g.data+'T00:00:00').toLocaleDateString('pt-BR')})</span></span>
+      <span class="font-mono">${moeda(g.valor)}</span>
+    </div>`;
+  }).join('') + (pendencias.length > 6 ? `<p class="text-[11px] text-[var(--ink-soft)] mt-1">+ ${pendencias.length-6} outra(s) pendência(s)</p>` : '');
+}
+
+// ---------- VISÃO: MÊS ----------
+function atualizarTelaMes(){
+  document.getElementById('mes-form-label').textContent = nomeMesCompleto(mesAtual);
+
+  const t = totaisDoMes(mesAtual);
+  const saldo = t.receitas - t.despesas;
+  document.getElementById('total-mes').textContent = moeda(t.despesas);
+  document.getElementById('total-receitas').textContent = moeda(t.receitas);
+  document.getElementById('total-pendente').textContent = moeda(t.pendente);
+  const saldoEl = document.getElementById('total-saldo');
+  saldoEl.textContent = moeda(saldo);
+  saldoEl.style.color = saldo >= 0 ? 'var(--success)' : 'var(--alert)';
+
+  // Meta geral
+  const meta = estado.metas[mesAtual];
+  const barra = document.getElementById('meta-barra');
+  const texto = document.getElementById('meta-texto');
+  const label = document.getElementById('meta-label');
+  if(meta){
+    label.textContent = `Meta: ${moeda(meta)}`;
+    const pct = Math.min(100, (t.despesas/meta)*100);
+    barra.style.width = pct + '%';
+    barra.style.background = t.despesas > meta ? 'var(--alert)' : 'var(--primary)';
+    texto.textContent = t.despesas > meta ? `Meta ultrapassada em ${moeda(t.despesas-meta)}.` : `${moeda(meta-t.despesas)} restantes dentro da meta (${pct.toFixed(0)}% usado).`;
+  } else {
+    label.textContent = 'Definir meta'; barra.style.width = '0%';
+    texto.textContent = 'Sem meta definida para este mês.';
+  }
+
+  // Orçamento por categoria
+  const metasCat = estado.metasCategoria[mesAtual] || {};
+  const gastosCat = {};
+  lancamentosDoMes(mesAtual).filter(g=>g.tipo==='despesa').forEach(g => { gastosCat[g.categoria] = (gastosCat[g.categoria]||0) + Number(g.valor); });
+  document.getElementById('orcamento-categorias').innerHTML = CATEGORIAS_DESPESA.map(cat => {
+    const gasto = gastosCat[cat] || 0;
+    const orc = metasCat[cat];
+    if(!orc && !gasto) return '';
+    const pct = orc ? Math.min(100, (gasto/orc)*100) : 0;
+    const estourou = orc && gasto > orc;
+    return `
+      <div>
+        <div class="flex items-center justify-between text-xs mb-1">
+          <span class="font-medium">${cat}</span>
+          <span class="font-mono flex items-center gap-2">
+            ${orc ? `${moeda(gasto)} / ${moeda(orc)}` : moeda(gasto)}
+            <button onclick="editarMetaCategoria('${cat}')" class="no-print text-[var(--ink-soft)] hover:text-[var(--primary)]"><i class="fa-solid fa-pen text-[10px]"></i></button>
+          </span>
+        </div>
+        ${orc ? `<div class="w-full h-2 rounded-full overflow-hidden" style="background:var(--paper-alt);"><div class="h-full rounded-full" style="width:${pct}%; background:${estourou ? 'var(--alert)' : 'var(--primary)'};"></div></div>` : ''}
+      </div>`;
+  }).join('') || `<p class="text-xs text-[var(--ink-soft)]">Sem orçamentos ou gastos por categoria ainda. Clique no lápis de uma categoria para definir um orçamento (adicione um gasto primeiro para ela aparecer).</p>`;
+  // Garante que categorias sem gasto mas com clique ainda sejam editáveis via botão genérico
+  if(!Object.keys(gastosCat).length && !Object.keys(metasCat).length){
+    document.getElementById('orcamento-categorias').innerHTML = CATEGORIAS_DESPESA.map(cat => `
+      <div class="flex items-center justify-between text-xs">
+        <span>${cat}</span>
+        <button onclick="editarMetaCategoria('${cat}')" class="no-print text-[var(--ink-soft)] hover:text-[var(--primary)]"><i class="fa-solid fa-pen text-[10px]"></i> definir</button>
+      </div>`).join('');
+  }
+
+  renderizarHeatmap();
+
+  // Filtros de select (conta/pessoa)
+  const filtroConta = document.getElementById('filtro-conta');
+  filtroConta.innerHTML = '<option value="todas">Conta: todas</option>' + CONTAS.map(c=>`<option value="${c}">${c}</option>`).join('');
+  const filtroPessoa = document.getElementById('filtro-pessoa');
+  const pessoaSelecionada = filtroPessoa.value;
+  filtroPessoa.innerHTML = '<option value="todas">Pessoa: todas</option>' + estado.membros.map(m=>`<option value="${m}">${m}</option>`).join('');
+  filtroPessoa.value = estado.membros.includes(pessoaSelecionada) ? pessoaSelecionada : 'todas';
+
+  const busca = document.getElementById('busca').value.toLowerCase().trim();
+  const filtroStatus = document.getElementById('filtro-status').value;
+  const contaFiltro = filtroConta.value;
+  const pessoaFiltro = filtroPessoa.value;
+
+  let visiveis = lancamentosDoMes(mesAtual).filter(g => {
+    if(busca && !g.descricao.toLowerCase().includes(busca) && !g.categoria.toLowerCase().includes(busca)) return false;
+    const st = statusItem(g);
+    if(filtroStatus !== 'todos' && st !== filtroStatus) return false;
+    if(contaFiltro !== 'todas' && g.conta !== contaFiltro) return false;
+    if(pessoaFiltro !== 'todas' && g.pessoa !== pessoaFiltro) return false;
+    return true;
+  }).sort((a,b) => (a.pago === b.pago) ? a.data.localeCompare(b.data) : (a.pago - b.pago));
+
+  const tbody = document.getElementById('tabela-gastos');
+  const vazio = document.getElementById('lista-vazia');
+  tbody.innerHTML = '';
+  vazio.classList.toggle('hidden', visiveis.length > 0);
+
+  visiveis.forEach(g => {
+    const tr = document.createElement('tr');
+    tr.className = 'row-enter';
+    const sinal = g.tipo === 'receita' ? '+' : '−';
+    const corValor = g.tipo === 'receita' ? 'style="color:var(--success)"' : '';
+    const st = statusItem(g);
+    const statusTxt = st === 'pago' ? (g.tipo==='receita' ? 'Recebido' : 'Pago') : (st === 'atrasado' ? 'Atrasado' : 'Pendente');
+    const statusClasse = st === 'pago' ? 'status-pago' : (st === 'atrasado' ? 'status-atrasado' : 'status-pendente');
+    tr.innerHTML = `
+      <td class="py-3 px-1">
+        <div class="font-medium">${g.descricao} ${g.recorrente ? '<i class="fa-solid fa-arrows-rotate text-[10px] ml-1 text-[var(--ink-soft)]" title="Recorrente"></i>' : ''} ${g.nota ? `<i class="fa-solid fa-paperclip text-[10px] ml-1 text-[var(--ink-soft)]" title="${g.nota.replace(/"/g,'')}"></i>` : ''}</div>
+        <div class="flex flex-wrap gap-1 mt-1">
+          <span class="badge">${g.conta || '—'}</span>
+          <span class="badge">${g.pessoa || '—'}</span>
+          ${g.dividirCom && g.dividirCom.length ? `<span class="badge">dividido c/ ${g.dividirCom.join(', ')}</span>` : ''}
+        </div>
+      </td>
+      <td class="py-3 px-1 text-xs text-[var(--ink-soft)]">${g.categoria}</td>
+      <td class="py-3 px-1 text-right font-mono" ${corValor}>${sinal} ${moeda(g.valor)}</td>
+      <td class="py-3 px-1 text-center">
+        <button onclick="alternarStatus(${g.id})" class="no-print px-2.5 py-1 rounded-full text-[11px] font-semibold chip ${statusClasse}">${statusTxt}</button>
+        <span class="hidden print:inline text-xs">${statusTxt}</span>
+      </td>
+      <td class="py-3 px-1 text-center whitespace-nowrap no-print">
+        <button onclick="abrirEdicao(${g.id})" class="text-[var(--ink-soft)] hover:text-[var(--primary)] text-xs px-1"><i class="fa-solid fa-pen"></i></button>
+        <button onclick="pedirExclusao(${g.id})" class="text-[var(--ink-soft)] hover:text-[var(--alert)] text-xs px-1"><i class="fa-solid fa-trash"></i></button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderizarHeatmap(){
+  const [y,m] = mesAtual.split('-').map(Number);
+  const totalDias = diasNoMes(y, m-1);
+  const totais = {};
+  lancamentosDoMes(mesAtual).filter(g=>g.tipo==='despesa').forEach(g => {
+    const dia = parseInt(g.data.slice(8,10), 10);
+    totais[dia] = (totais[dia]||0) + Number(g.valor);
+  });
+  const max = Math.max(1, ...Object.values(totais));
+  const primeiroDiaSemana = new Date(y, m-1, 1).getDay();
+  let html = '<div class="grid grid-cols-7 gap-1 text-[10px] text-center text-[var(--ink-soft)] mb-1">' + ['D','S','T','Q','Q','S','S'].map(d=>`<span>${d}</span>`).join('') + '</div>';
+  html += '<div class="grid grid-cols-7 gap-1">';
+  for(let i=0;i<primeiroDiaSemana;i++) html += '<div></div>';
+  for(let dia=1; dia<=totalDias; dia++){
+    const val = totais[dia] || 0;
+    const intensidade = val / max;
+    const bg = val === 0 ? 'var(--paper-alt)' : `rgba(181,72,42,${(0.15+intensidade*0.65).toFixed(2)})`;
+    const corTexto = intensidade > 0.55 ? '#fff' : 'var(--ink)';
+    html += `<div class="heatmap-cell aspect-square flex items-center justify-center text-[10px] font-mono" style="background:${bg}; color:${corTexto};" title="Dia ${dia}: ${moeda(val)}">${dia}</div>`;
+  }
+  html += '</div>';
+  document.getElementById('heatmap-mes').innerHTML = html;
+}
+
+// ---------- VISÃO: DASHBOARD ----------
+function atualizarDashboard(){
+  const meses = ultimosMeses(6);
+  const saldoTotal = estado.lancamentos.reduce((s,g)=> s + (g.tipo==='receita' ? Number(g.valor) : -Number(g.valor)), 0);
+  let receitas6m = 0, despesas6m = 0;
+  meses.forEach(ref => { const t = totaisDoMes(ref); receitas6m += t.receitas; despesas6m += t.despesas; });
+  const pendenteTudo = estado.lancamentos.filter(g => g.tipo==='despesa' && !g.pago).reduce((s,g)=>s+Number(g.valor),0);
+
+  document.getElementById('dash-saldo-total').textContent = moeda(saldoTotal);
+  document.getElementById('dash-saldo-total').style.color = saldoTotal >= 0 ? 'var(--success)' : 'var(--alert)';
+  document.getElementById('dash-receitas-6m').textContent = moeda(receitas6m);
+  document.getElementById('dash-despesas-6m').textContent = moeda(despesas6m);
+  document.getElementById('dash-pendente-total').textContent = moeda(pendenteTudo);
+
+  const sel = document.getElementById('dash-mes-categoria');
+  const selecaoAnterior = sel.value;
+  sel.innerHTML = meses.slice().reverse().map(ref => `<option value="${ref}">${nomeMesCompleto(ref)}</option>`).join('');
+  sel.value = meses.includes(selecaoAnterior) ? selecaoAnterior : mesAtual;
+
+  // Projeção de saldo
+  const baseRef = mesRef(new Date());
+  const recorrentesBase = lancamentosDoMes(baseRef).filter(g => g.recorrente);
+  const receitaFixa = recorrentesBase.filter(g=>g.tipo==='receita').reduce((s,g)=>s+Number(g.valor),0);
+  const despesaFixa = recorrentesBase.filter(g=>g.tipo==='despesa').reduce((s,g)=>s+Number(g.valor),0);
+  const deltaMensal = receitaFixa - despesaFixa;
+  const projecaoDiv = document.getElementById('dash-projecao');
+  let htmlProj = '';
+  for(let i=1;i<=3;i++){
+    const d = new Date(); d.setMonth(d.getMonth()+i);
+    const ref = mesRef(d);
+    const saldoProj = saldoTotal + deltaMensal * i;
+    htmlProj += `<div class="flex items-center justify-between">
+      <span>${nomeMesCompleto(ref)}</span>
+      <span class="font-mono font-medium" style="color:${saldoProj>=0?'var(--success)':'var(--alert)'}">${moeda(saldoProj)}</span>
+    </div>`;
+  }
+  projecaoDiv.innerHTML = htmlProj;
+  document.getElementById('dash-projecao-nota').textContent = recorrentesBase.length
+    ? `Baseado nos lançamentos recorrentes de ${nomeMesCompleto(baseRef)} (${moeda(deltaMensal)}/mês).`
+    : 'Cadastre lançamentos recorrentes no mês atual para uma projeção mais precisa.';
+
+  // Comparativo de categorias (mesAtual vs mês anterior)
+  const refAnterior = mesAnteriorRef(mesAtual);
+  const catsAtual = {}, catsAnterior = {};
+  lancamentosDoMes(mesAtual).filter(g=>g.tipo==='despesa').forEach(g => catsAtual[g.categoria] = (catsAtual[g.categoria]||0) + Number(g.valor));
+  lancamentosDoMes(refAnterior).filter(g=>g.tipo==='despesa').forEach(g => catsAnterior[g.categoria] = (catsAnterior[g.categoria]||0) + Number(g.valor));
+  const categoriasTodas = Array.from(new Set([...Object.keys(catsAtual), ...Object.keys(catsAnterior)])).sort();
+  const compDiv = document.getElementById('dash-comparativo');
+  compDiv.innerHTML = categoriasTodas.length ? categoriasTodas.map(cat => {
+    const a = catsAtual[cat] || 0, b = catsAnterior[cat] || 0;
+    let icone = '<i class="fa-solid fa-minus text-[var(--ink-soft)]"></i>';
+    if(a > b) icone = '<i class="fa-solid fa-arrow-up" style="color:var(--alert)"></i>';
+    else if(a < b) icone = '<i class="fa-solid fa-arrow-down" style="color:var(--success)"></i>';
+    return `<div class="flex items-center justify-between">
+      <span>${icone} ${cat}</span>
+      <span class="font-mono text-xs">${moeda(a)} <span class="text-[var(--ink-soft)]">(${moeda(b)})</span></span>
+    </div>`;
+  }).join('') : `<p class="text-xs text-[var(--ink-soft)]">Sem despesas suficientes para comparar.</p>`;
+
+  // Gasto por pessoa (mesAtual)
+  document.getElementById('dash-pessoa-mes').textContent = nomeMesCompleto(mesAtual);
+  const despesasMesAtual = lancamentosDoMes(mesAtual).filter(g=>g.tipo==='despesa');
+  const totalDespesasMes = despesasMesAtual.reduce((s,g)=>s+Number(g.valor),0) || 1;
+  const porPessoa = {};
+  despesasMesAtual.forEach(g => { porPessoa[g.pessoa] = (porPessoa[g.pessoa]||0) + Number(g.valor); });
+  const pessoaDiv = document.getElementById('dash-por-pessoa');
+  const chavesPessoa = Object.keys(porPessoa);
+  pessoaDiv.innerHTML = chavesPessoa.length ? chavesPessoa.map(p => {
+    const v = porPessoa[p];
+    const pct = (v/totalDespesasMes)*100;
+    return `<div>
+      <div class="flex items-center justify-between text-xs mb-1"><span class="font-medium">${p}</span><span class="font-mono">${moeda(v)}</span></div>
+      <div class="w-full h-2 rounded-full overflow-hidden" style="background:var(--paper-alt);"><div class="h-full rounded-full" style="width:${pct}%; background:var(--gold);"></div></div>
+    </div>`;
+  }).join('') : `<p class="text-xs text-[var(--ink-soft)]">Sem despesas registradas neste mês.</p>`;
+
+  // Acerto de contas (divisão de despesas do mesAtual)
+  document.getElementById('dash-acerto-mes').textContent = nomeMesCompleto(mesAtual);
+  const dividas = {}; // devedor -> credor -> valor
+  despesasMesAtual.filter(g => g.dividirCom && g.dividirCom.length).forEach(g => {
+    const participantes = [g.pessoa, ...g.dividirCom];
+    const parte = Number(g.valor) / participantes.length;
+    g.dividirCom.forEach(devedor => {
+      dividas[devedor] ||= {};
+      dividas[devedor][g.pessoa] = (dividas[devedor][g.pessoa] || 0) + parte;
+    });
+  });
+  const linhasAcerto = [];
+  Object.keys(dividas).forEach(devedor => {
+    Object.keys(dividas[devedor]).forEach(credor => {
+      linhasAcerto.push(`<div class="flex items-center justify-between"><span><b>${devedor}</b> deve para <b>${credor}</b></span><span class="font-mono">${moeda(dividas[devedor][credor])}</span></div>`);
+    });
+  });
+  document.getElementById('dash-acerto').innerHTML = linhasAcerto.length ? linhasAcerto.join('') : `<p class="text-xs text-[var(--ink-soft)]">Nenhuma despesa dividida neste mês.</p>`;
+
+  // Poupanças
+  const poupDiv = document.getElementById('dash-poupancas');
+  poupDiv.innerHTML = estado.poupancas.length ? estado.poupancas.map(p => {
+    const pct = Math.min(100, (p.atual/p.alvo)*100);
+    return `<div>
+      <div class="flex items-center justify-between text-sm mb-1">
+        <span class="font-medium">${p.nome}</span>
+        <span class="font-mono text-xs flex items-center gap-2">
+          ${moeda(p.atual)} / ${moeda(p.alvo)}
+          <button onclick="contribuirPoupanca(${p.id})" class="no-print text-[var(--primary)]"><i class="fa-solid fa-circle-plus"></i></button>
+          <button onclick="excluirPoupanca(${p.id})" class="no-print text-[var(--ink-soft)] hover:text-[var(--alert)]"><i class="fa-solid fa-trash"></i></button>
+        </span>
+      </div>
+      <div class="w-full h-2.5 rounded-full overflow-hidden" style="background:var(--paper-alt);"><div class="h-full rounded-full" style="width:${pct}%; background:var(--success);"></div></div>
+    </div>`;
+  }).join('') : `<p class="text-xs text-[var(--ink-soft)]">Nenhuma meta de poupança ainda. Clique em "Nova meta" para começar.</p>`;
+
+  // Metas de gasto por mês
+  const listaMetas = document.getElementById('dash-metas-lista');
+  listaMetas.innerHTML = meses.slice().reverse().map(ref => {
+    const meta = estado.metas[ref];
+    const t = totaisDoMes(ref);
+    if(!meta) return `<div class="flex items-center justify-between text-sm py-1.5 border-b border-[var(--paper-alt)] last:border-0"><span class="font-medium">${nomeMesCompleto(ref)}</span><span class="text-xs text-[var(--ink-soft)] font-mono">sem meta</span></div>`;
+    const pct = Math.min(100, (t.despesas/meta)*100);
+    const estourou = t.despesas > meta;
+    return `<div class="py-1.5 border-b border-[var(--paper-alt)] last:border-0">
+      <div class="flex items-center justify-between text-sm mb-1">
+        <span class="font-medium">${nomeMesCompleto(ref)}</span>
+        <span class="text-xs font-mono" style="color:${estourou ? 'var(--alert)' : 'var(--ink-soft)'}">${moeda(t.despesas)} / ${moeda(meta)}</span>
+      </div>
+      <div class="w-full h-2 rounded-full overflow-hidden" style="background:var(--paper-alt);"><div class="h-full rounded-full" style="width:${pct}%; background:${estourou ? 'var(--alert)' : 'var(--primary)'};"></div></div>
+    </div>`;
+  }).join('');
+
+  renderizarGraficos();
+}
+
+function renderizarGraficos(){
+  const meses = ultimosMeses(6);
+  const totaisDespesa = meses.map(ref => totaisDoMes(ref).despesas);
+  const totaisReceita = meses.map(ref => totaisDoMes(ref).receitas);
+
+  const ctx1 = document.getElementById('graficoMeses').getContext('2d');
+  if(graficoMeses) graficoMeses.destroy();
+  graficoMeses = new Chart(ctx1, {
+    type: 'bar',
+    data: { labels: meses.map(labelMes), datasets: [
+      { label:'Despesas', data: totaisDespesa, backgroundColor:'#B5482A', borderRadius:5 },
+      { label:'Receitas', data: totaisReceita, backgroundColor:'#2F7A52', borderRadius:5 }
+    ]},
+    options: { responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, font:{ family:'Inter', size:11 } } } },
+      scales:{ y:{ beginAtZero:true, ticks:{ font:{ family:'IBM Plex Mono', size:10 } } }, x:{ ticks:{ font:{ family:'Inter', size:11 } } } } }
+  });
+
+  const refCategoria = document.getElementById('dash-mes-categoria').value || mesAtual;
+  const despesasMes = lancamentosDoMes(refCategoria).filter(g=>g.tipo==='despesa');
+  const porCategoria = {};
+  despesasMes.forEach(g => { porCategoria[g.categoria] = (porCategoria[g.categoria]||0) + Number(g.valor); });
+
+  const ctx2 = document.getElementById('graficoCategorias').getContext('2d');
+  if(graficoCategorias) graficoCategorias.destroy();
+  const labels = Object.keys(porCategoria);
+  graficoCategorias = new Chart(ctx2, {
+    type: 'doughnut',
+    data: { labels: labels.length ? labels : ['Sem despesas'], datasets: [{ data: labels.length ? Object.values(porCategoria) : [1], backgroundColor: labels.length ? CORES_CATEGORIA : ['#E5DFCE'] }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, font:{ family:'Inter', size:10 } } } } }
+  });
+}
+
+// ---------- Exportar CSV ----------
+function exportarCSV(){
+  const ref = abaAtual === 'dashboard' ? mesAtual : abaAtual;
+  const doMes = lancamentosDoMes(ref);
+  if(!doMes.length){ alert('Não há lançamentos neste mês para exportar.'); return; }
+  const linhas = [['Tipo','Descrição','Categoria','Valor','Status','Data','Conta','Pessoa','Nota']];
+  doMes.forEach(g => linhas.push([
+    g.tipo === 'receita' ? 'Receita' : 'Despesa', g.descricao, g.categoria,
+    g.valor.toFixed(2).replace('.', ','), g.pago ? 'Pago' : 'Pendente',
+    g.data, g.conta || '', g.pessoa || '', g.nota || ''
+  ]));
+  const csv = linhas.map(l => l.map(c => `"${String(c).replace(/"/g,'""')}"`).join(';')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type:'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `financy-home-${ref}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ---------- Inicialização ----------
+async function iniciar(){
+  await carregarEstado();
+  popularCategorias('categoria', 'despesa');
+  popularContas('conta');
+  popularContas('edit-conta');
+  popularPessoas('pessoa');
+  popularPessoas('edit-pessoa');
+  renderizarDividirCom();
+  setTipoLancamento('despesa');
+  atualizarDataPadrao();
+  renderizarAbas();
+  document.getElementById('loading-state').classList.add('hidden');
+  document.getElementById('app-content').classList.remove('hidden');
+  atualizarDashboard();
+  atualizarAlertas();
+}
+iniciar();
+</script>
+</body>
+</html>
